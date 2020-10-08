@@ -13,7 +13,7 @@ from load_all import bot, dp
 async def cancel_handler(message: Union[types.Message, types.CallbackQuery], state: FSMContext):
     await state.finish()
     keyboard_markup = InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text='На главную', callback_data='main')]]
+        inline_keyboard=[[InlineKeyboardButton(text='На главную', callback_data='start')]]
     )
     try:
         await bot.delete_message(message.from_user.id, message.message.message_id or message.message_id)
@@ -22,33 +22,3 @@ async def cancel_handler(message: Union[types.Message, types.CallbackQuery], sta
     await bot.send_message(message.from_user.id,
                            text='Отменено. Вернитесь в галвное меню.',
                            reply_markup=keyboard_markup)
-
-
-@dp.callback_query_handler()
-async def error_message(call: types.CallbackQuery, state: FSMContext):
-    # Cancel any state
-    await state.finish()
-    keyboard_markup = InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text='На главную', callback_data='main')]]
-    )
-    reply = f'Неизвестная команда:('
-    try:
-        await bot.delete_message(call.from_user.id, call.message.message_id)
-    except Exception:
-        pass
-    await bot.send_message(call.from_user.id, text=reply, reply_markup=keyboard_markup)
-
-
-@dp.message_handler()
-async def error_message(message: types.Message, state: FSMContext):
-    # Cancel any state
-    await state.finish()
-    keyboard_markup = InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text='На главную', callback_data='main')]]
-    )
-    reply = f'Неизвестная команда:('
-    try:
-        await bot.delete_message(message.from_user.id, message.message_id)
-    except Exception:
-        pass
-    await bot.send_message(message.from_user.id, text=reply, reply_markup=keyboard_markup)

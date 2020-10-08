@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, Union
 
 from aiogram.dispatcher import FSMContext
@@ -35,14 +36,14 @@ async def start_cmd_handler(message: Union[Message, CallbackQuery]):
                                           callback_data=deposit_cb.new(club=club.get('Club_name')))]]
             )
             reply = f'Пополнить для клуба {club.get("Club_name")}'
-            await bot.send_message(message.from_user.id, reply=reply, reply_markup=keyboard_markup)
+            await bot.send_message(message.from_user.id, text=reply, reply_markup=keyboard_markup)
     else:
         keyboard_markup = InlineKeyboardMarkup(
             inline_keyboard=[
                 [InlineKeyboardButton(text='Контакты для связи', callback_data='contacts')]]
         )
         reply = 'В данный момент сервис не доступен, попробуйте позднее.'
-        await bot.send_message(message.from_user.id, reply=reply, reply_markup=keyboard_markup)
+        await bot.send_message(message.from_user.id, text=reply, reply_markup=keyboard_markup)
 
 
 @dp.callback_query_handler(deposit_cb.filter())
@@ -55,7 +56,7 @@ async def choice_method(call: CallbackQuery, callback_data: Dict[str, str]):
     :return:
     """
     await call.answer()
-    await call.message.edit_reply_markup()
+    # await call.message.edit_reply_markup()
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text='Назад',
@@ -67,12 +68,12 @@ async def choice_method(call: CallbackQuery, callback_data: Dict[str, str]):
     if data != 'File not read' and data.get('Clubs'):
         for club in data.get('Clubs'):
             if club.get('Club_name') == current_club:
-                for method in club.get('Deposit'):
+                for _, value in club['Deposit'].items():
                     keyboard_markup.add(
-                        InlineKeyboardButton(text=f'{method.get("Name")}',
+                        InlineKeyboardButton(text=f'{value.get("Name")}',
                                              callback_data=withdraw_cb.new(action='view',
                                                                            club=club.get('Club_name'),
-                                                                           method=method.get('Name'))),
+                                                                           method=value.get('Name'))),
                     )
 
     reply = f'Варианты пополнения для клуба {current_club}'
@@ -155,7 +156,7 @@ async def ask_photo_prove(call: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text='Отмена', callback_data='')]  # TODO cancel
+            [InlineKeyboardButton(text='Отмена', callback_data='cancel')]  # TODO cancel
         ]
     )
 
@@ -177,7 +178,7 @@ async def get_photo_prove(message: Message, state: FSMContext):
 
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text='К ... (куда его отсюда вести?)', callback_data='')]  # TODO
+            [InlineKeyboardButton(text='К ... (куда его отсюда вести?)', callback_data='cancel')]  # TODO
         ]
     )
 
@@ -196,7 +197,7 @@ async def no_photo_prove(message: Message):
 
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text='Отмена', callback_data='')]  # TODO cancel
+            [InlineKeyboardButton(text='Отмена', callback_data='cancel')]  # TODO cancel
         ]
     )
 
