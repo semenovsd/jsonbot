@@ -31,7 +31,7 @@ async def start_cmd_handler(message: Union[Message, CallbackQuery]):
         for club in data.get('Clubs'):
             keyboard_markup = InlineKeyboardMarkup(
                 inline_keyboard=[
-                    [InlineKeyboardButton(text='Продолжить',
+                    [InlineKeyboardButton(text='Пополнить',
                                           callback_data=deposit_cb.new(club=club.get('Club_name')))]]
             )
             reply = f'Пополнить для клуба {club.get("Club_name")}'
