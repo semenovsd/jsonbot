@@ -7,14 +7,14 @@ sudo apt-get install -y apt-transport-https ca-certificates curl gnupg-agent sof
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 sudo apt-get update
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose
+sudo apt-get install -y docker docker-compose
 sudo systemctl start docker
 
-# Enable userns-remap on the daemon
-sudo echo "{
-  \"userns-remap\": \"default\"
-}" >/etc/docker/daemon.json
-sudo systemctl restart docker
+## Enable userns-remap on the daemon
+#sudo echo "{
+#  \"userns-remap\": \"default\"
+#}" >/etc/docker/daemon.json
+#sudo systemctl restart docker
 
 # Add group docker
 sudo groupadd docker
