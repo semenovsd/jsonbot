@@ -29,7 +29,7 @@ class User(db.Model):
         if user:
             return user
         else:
-            args = message.get_args() if hasattr(message, 'get_args') else None
+            # args = message.get_args() if hasattr(message, 'get_args') else None
             new_user = User()
             new_user.tg_id = int(tg_id)
             await new_user.create()

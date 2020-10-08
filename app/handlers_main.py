@@ -13,7 +13,7 @@ deposit_cb = CallbackData('deposit', 'club')
 
 @dp.message_handler(CommandStart())
 async def start_cmd_handler(message: Message):
-    args = message.get_args() if hasattr(message, 'get_args') else None
+    # args = message.get_args() if hasattr(message, 'get_args') else None
     # зарегистрировать пользователя с данными из диплинка
 
     data = read_json_data(JSON_DATA_FILENAME)
