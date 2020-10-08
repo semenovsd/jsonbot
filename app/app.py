@@ -48,9 +48,6 @@ async def on_shutdown(dispatcher: Dispatcher):
 if __name__ == '__main__':
     # forwarding dp from handlers
     from handlers_main import dp
-    from handlers_newuser import dp
-    from handlers_admin import dp
-    from handlers_plans import dp
     from handlers_cancel import dp
 
     # Generate SSL context.

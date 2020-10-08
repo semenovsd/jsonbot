@@ -1,4 +1,5 @@
 # add send broadcast. Add get data
+import json
 import logging
 from asyncio import sleep
 
@@ -30,11 +31,10 @@ async def send_messages(message: str, users_id: list):
             log.info(f"Target [ID:{user_id}]: success")
 
 
-def replace_number(number):
-    number = number.replace(' ', '')
-    number = number.replace('-', '')
-    number = number.replace('(', '')
-    number = number.replace(')', '')
-    number = number.replace('+', '')
-    # number[0] = 7
-    return number
+def read_json_data(file_name):
+    try:
+        with open(file_name, 'r', encoding='utf-8') as f:
+            text = json.load(f)
+        return text
+    except OSError:
+        return 'File not read'
