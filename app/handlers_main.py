@@ -6,7 +6,8 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQu
 from aiogram.utils.callback_data import CallbackData
 
 from config import JSON_DATA_FILENAME
-from functions import read_json_data, get_method_data, service_unavailable
+from database import User
+from functions import read_json_data, get_method_data, service_unavailable, notification, photo_notification
 from load_all import bot, dp
 
 from states import AddProve
@@ -26,7 +27,6 @@ async def start_cmd_handler(message: Union[Message, CallbackQuery], state: FSMCo
     """
     await state.finish()
     # todo
-    # args = message.get_args() if hasattr(message, 'get_args') else None
     # зарегистрировать пользователя с данными из диплинка
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -114,14 +114,14 @@ async def choice_method(call: CallbackQuery, callback_data: Dict[str, str]):
                         InlineKeyboardButton(text=f'{value.get("Name")}',
                                              callback_data=withdraw_cb.new(action='view',
                                                                            club=club.get('Club_name'),
-                                                                           method=value.get('Name'))),
+                                                                           method=value.get('Name')))
                     )
 
         keyboard_markup.add(
             InlineKeyboardButton(text='Contacts', callback_data='contacts'),
             InlineKeyboardButton(text='Back', callback_data='show_clubs'),
             InlineKeyboardButton(text='Withdraw',
-                                 callback_data=withdraw_cb.new(action='withdraw', club=current_club, method='_')),
+                                 callback_data=withdraw_cb.new(action='withdraw', club=current_club, method='_'))
         )
 
         reply = f'Choice available method for {current_club}'
@@ -131,25 +131,31 @@ async def choice_method(call: CallbackQuery, callback_data: Dict[str, str]):
 
 
 @dp.callback_query_handler(withdraw_cb.filter(action='withdraw'))
-async def deposit(call: CallbackQuery, callback_data: Dict[str, str]):
+async def deposit(call: CallbackQuery, callback_data: Dict[str, str], user: User):
     """
     Выводить кнопки пополнить и отправить скриншот пополнения.
     ВАЖНО: Ограничение на суммарное название клуба, метода пополнения и названия действия 64 байта!
     :param call:
     :param callback_data:
+    :param user:
     :return:
     """
-    # TODO make notification
     await call.message.edit_reply_markup()
     club_name = callback_data.get('club')
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text='Show me the Clubs', callback_data='')],
-            [InlineKeyboardButton(text='Contacts', callback_data='contacts')],
+            [InlineKeyboardButton(text='Show me the Clubs', callback_data='show_clubs')],
+            [InlineKeyboardButton(text='Contacts', callback_data='contacts')]
         ]
     )
-    reply = f'Твоя заявка на вывод для клуба {club_name} отправлена администратору!'
-    await call.message.answer(reply, reply_markup=keyboard_markup)
+
+    msg = f'Пользоатель ID {user.tg_id} (@{user.tg_username}) запросил вывод для клуба {club_name}'
+    send = await notification(msg)
+    if send:
+        reply = f'Твоя заявка на вывод для клуба {club_name} отправлена администратору!'
+        await call.message.answer(reply, reply_markup=keyboard_markup)
+    else:
+        await service_unavailable(call.from_user.id)
 
 
 @dp.callback_query_handler(withdraw_cb.filter(action='view'))
@@ -191,49 +197,53 @@ async def deposit(call: CallbackQuery, callback_data: Dict[str, str]):
 
 
 @dp.callback_query_handler(withdraw_cb.filter(action='transfer'))
-async def deposit(call: CallbackQuery, callback_data: Dict[str, str]):
+async def deposit(call: CallbackQuery, callback_data: Dict[str, str], user: User):
     """
     Хэндлер отправляет уведомление (сообщение) в чат о желании пользователя пополнить выбранным методом данный клуб.
     Также добавлять пользователю лог об отправке данного сообщения, для блокировки повторной отправки уведомления.
     ВАЖНО: Ограничение на суммарное название клуба, метода пополнения и названия действия 64 байта!
     :param call:
     :param callback_data:
+    :param user:
     :return:
     """
-    # TODO make send notification
     await call.message.edit_reply_markup()
-    current_club = callback_data.get('club')
+    club_name = callback_data.get('club')
     method = callback_data.get('method')
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text='Back', callback_data=withdraw_cb.new(action='view',
-                                                                             club=current_club,
+                                                                             club=club_name,
                                                                              method=method))],
         ]
     )
-
-    reply = f'Заявка получена  Клуб ID : 00000  ID игрока: 00000 Покер Хостинг: xxx'
-    await call.message.answer(reply, reply_markup=keyboard_markup)
+    msg = f'Пользователь ID {user.tg_id} (@{user.tg_username}) хочет пополнить методом {method} для клуба {club_name}'
+    send = await notification(msg)
+    if send:
+        reply = f'Заявка получена  Клуб ID : 00000  ID игрока: 00000 Покер Хостинг: xxx'
+        await call.message.answer(reply, reply_markup=keyboard_markup)
+    else:
+        await service_unavailable(call.from_user.id)
 
 
 @dp.callback_query_handler(withdraw_cb.filter(action='prove'))
-async def ask_photo_prove(call: CallbackQuery, state: FSMContext):
+async def ask_photo_prove(call: CallbackQuery, callback_data: Dict[str, str], state: FSMContext):
     """
     Хэндлер для отправки скриншота пополнения. Пользователя просят отправить скриншот (тип фала - фото).
     Можно только отменить и выйти в главное меню или отправить фото.
     ВАЖНО: Ограничение на суммарное название клуба, метода пополнения и названия действия 64 байта!
-    :param state:
     :param call:
     :return:
     """
-    # TODO make sand photo prove
     await call.message.edit_reply_markup()
 
     await AddProve.Image.set()
-    data = await state.get_data()
+    club_name = callback_data.get('club')
+    method = callback_data.get('method')
+    await state.update_data(club_name=club_name, method=method)
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text='Отмена', callback_data='cancel')]  # TODO cancel
+            [InlineKeyboardButton(text='Отмена', callback_data='cancel')]
         ]
     )
 
@@ -242,7 +252,7 @@ async def ask_photo_prove(call: CallbackQuery, state: FSMContext):
 
 
 @dp.message_handler(state=AddProve.Image, content_types=ContentType.PHOTO)
-async def get_photo_prove(message: Message, state: FSMContext):
+async def get_photo_prove(message: Message, state: FSMContext, user: User):
     """
     Хэндлер получает от пользователя фото и отправляет информацию в чат оповещения.
     ВАЖНО: Ограничение на суммарное название клуба, метода пополнения и названия действия 64 байта!
@@ -251,16 +261,22 @@ async def get_photo_prove(message: Message, state: FSMContext):
     :return:
     """
     data = await state.get_data()
+    photo = message.photo[0]
     await state.finish()
 
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text='К ... (куда его отсюда вести?)', callback_data='start')]  # TODO
+            [InlineKeyboardButton(text='К ... (куда его отсюда вести?)', callback_data='start')]
         ]
     )
-
-    reply = f'Отлично! Фото получено! Ожидай подтверждения в ближайшее время! Данные по фото {message.photo[0]}'
-    await message.answer(reply, reply_markup=keyboard_markup)
+    msg = f'Подтверждение от пользователя ID {user.tg_id} (@{user.tg_username}) о пополнение ' \
+          f'методом {data.get("method")} для клуба {data.get("club_name")}'
+    send = await photo_notification(msg, photo)
+    if send:
+        reply = f'Отлично! Фото получено! Ожидай подтверждения в ближайшее время! Данные по фото {message.photo[0]}'
+        await message.answer(reply, reply_markup=keyboard_markup)
+    else:
+        await service_unavailable(message.from_user.id)
 
 
 @dp.message_handler(state=AddProve.Image)
@@ -274,7 +290,7 @@ async def no_photo_prove(message: Message):
 
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text='Отмена', callback_data='cancel')]  # TODO cancel
+            [InlineKeyboardButton(text='Отмена', callback_data='cancel')]
         ]
     )
 

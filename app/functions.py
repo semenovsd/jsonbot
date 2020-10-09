@@ -6,6 +6,7 @@ from asyncio import sleep
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils import exceptions
 
+from config import TG_NOTICE_CHAT_ID
 from load_all import bot
 
 
@@ -23,6 +24,29 @@ async def send_messages(message: str, users_id: list):
             log.error(f"Target [ID:{user_id}]: Flood limit is exceeded. Sleep {e.timeout} seconds.")
             await sleep(e.timeout)
             return await send_messages(message, user_id)
+        except exceptions.UserDeactivated:
+            log.error(f"Target [ID:{user_id}]: user is deactivated")
+        except exceptions.TelegramAPIError:
+            log.exception(f"Target [ID:{user_id}]: failed")
+            pass
+        else:
+            log.info(f"Target [ID:{user_id}]: success")
+
+
+async def send_photo(message: str, users_id: list, photo):
+    log = logging.getLogger('broadcast')
+    for user_id in users_id:
+        try:
+            await bot.send_photo(chat_id=user_id, photo=photo, caption=message)
+            await sleep(0.05)  # Telegram limit 30 message per second, here set 20 msg per second
+        except exceptions.BotBlocked:
+            log.error(f"Target [ID:{user_id}]: blocked by user")
+        except exceptions.ChatNotFound:
+            log.error(f"Target [ID:{user_id}]: invalid user ID")
+        except exceptions.RetryAfter as e:
+            log.error(f"Target [ID:{user_id}]: Flood limit is exceeded. Sleep {e.timeout} seconds.")
+            await sleep(e.timeout)
+            return await bot.send_photo(chat_id=user_id, photo=photo, caption=message)
         except exceptions.UserDeactivated:
             log.error(f"Target [ID:{user_id}]: user is deactivated")
         except exceptions.TelegramAPIError:
@@ -62,7 +86,11 @@ async def service_unavailable(chat_id):
     await bot.send_message(chat_id, text=reply, reply_markup=keyboard_markup)
 
 
+async def notification(msg):
+    await send_messages(msg, [TG_NOTICE_CHAT_ID])
+    return True
 
 
-
-
+async def photo_notification(msg, photo):
+    await send_photo(msg, [TG_NOTICE_CHAT_ID], photo)
+    return True

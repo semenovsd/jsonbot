@@ -1,4 +1,5 @@
 import json
+import logging
 
 from gino import Gino
 from gino.schema import GinoSchemaVisitor
@@ -30,6 +31,7 @@ class User(db.Model):
             return user
         else:
             # args = message.get_args() if hasattr(message, 'get_args') else None
+            # logging.info(args)
             # ?q=123456&w=ppp&e=1234567&r=nickname
             # ?q=123456&w=ppp&e=1234567&r=12345&t=nickname
             # q - id_пользователя
