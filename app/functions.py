@@ -3,6 +3,7 @@ import json
 import logging
 from asyncio import sleep
 
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils import exceptions
 
 from load_all import bot
@@ -38,3 +39,30 @@ def read_json_data(file_name):
         return text
     except OSError:
         return 'File not read'
+
+
+def get_method_data(club_name, method_name, file_name):
+    data = read_json_data(file_name)
+    if data != 'File not read' and data.get('Clubs'):
+        for club in data.get('Clubs'):
+            if club.get('Club_name') == club_name:
+                for _, value in club['Deposit'].items():
+                    if value.get("Name") == method_name:
+                        return value
+
+
+async def service_unavailable(chat_id):
+    keyboard_markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text='Contacts', callback_data='contacts')]]
+    )
+    reply = 'The service is temporarily unavailable, please try again later'
+    await bot.send_sticker(chat_id,
+                           sticker='CAACAgIAAxkBAAIElF-ATNnW9y3WVWgDjLxOC5yvhY5QAAIUAQACufOXC5ZJByYQOH2bGwQ')
+    await bot.send_message(chat_id, text=reply, reply_markup=keyboard_markup)
+
+
+
+
+
+

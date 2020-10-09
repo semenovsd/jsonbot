@@ -30,6 +30,12 @@ class User(db.Model):
             return user
         else:
             # args = message.get_args() if hasattr(message, 'get_args') else None
+            # ?q=123456&w=ppp&e=1234567&r=nickname
+            # ?q=123456&w=ppp&e=1234567&r=12345&t=nickname
+            # q - id_пользователя
+            # w - poker_hosting
+            # e - id club
+            # r - id пользователя в клубе
             new_user = User()
             new_user.tg_id = int(tg_id)
             await new_user.create()

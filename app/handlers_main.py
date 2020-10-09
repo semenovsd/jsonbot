@@ -1,4 +1,3 @@
-import logging
 from typing import Dict, Union
 
 from aiogram.dispatcher import FSMContext
@@ -7,12 +6,12 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQu
 from aiogram.utils.callback_data import CallbackData
 
 from config import JSON_DATA_FILENAME
-from functions import read_json_data
+from functions import read_json_data, get_method_data, service_unavailable
 from load_all import bot, dp
 
 from states import AddProve
 
-deposit_cb = CallbackData('deposit', 'club')
+club_cb = CallbackData('deposit', 'club')
 withdraw_cb = CallbackData('withdraw', 'action', 'club', 'method')
 
 
@@ -22,6 +21,7 @@ async def start_cmd_handler(message: Union[Message, CallbackQuery], state: FSMCo
     """
     Стартовый экран приветствия.
     :param message:
+    :param state:
     :return:
     """
     await state.finish()
@@ -30,7 +30,7 @@ async def start_cmd_handler(message: Union[Message, CallbackQuery], state: FSMCo
     # зарегистрировать пользователя с данными из диплинка
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text='Show clubs', callback_data='show_clubs')],
+            [InlineKeyboardButton(text='Show me The Clubs', callback_data='show_clubs')],
             [InlineKeyboardButton(text='Contacts', callback_data='contacts')]
         ]
     )
@@ -40,15 +40,35 @@ async def start_cmd_handler(message: Union[Message, CallbackQuery], state: FSMCo
     await bot.send_message(message.from_user.id, text=reply, reply_markup=keyboard_markup)
 
 
+@dp.callback_query_handler(text='contacts')
+async def choice_method(call: CallbackQuery):
+    """
+    Экран контактов.
+    :param call:
+    :return:
+    """
+    await call.message.edit_reply_markup()
+
+    keyboard_markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text='Back',
+                                  callback_data='start')]
+        ]
+    )
+
+    reply = 'For contact the admin write here @stspb'
+    await call.message.answer_sticker(
+        sticker='CAACAgIAAxkBAAIEll-AT82D6FdJbvup_NkjKrALBRTRAAIaAQACufOXC0nTPkIwChsqGwQ')
+    await call.message.answer(text=reply, reply_markup=keyboard_markup)
+
+
 @dp.callback_query_handler(text='show_clubs')
-async def choice_method(call: CallbackQuery, callback_data: Dict[str, str]):
+async def choice_method(call: CallbackQuery):
     """
     Стартовый экран при заходе в бота. Выводи список доступных клубов из джейсон файла.
     :param call:
-    :param callback_data:
     :return:
     """
-    # await call.answer()
     await call.message.edit_reply_markup()
 
     keyboard_markup = InlineKeyboardMarkup(
@@ -61,18 +81,15 @@ async def choice_method(call: CallbackQuery, callback_data: Dict[str, str]):
         for club in data.get('Clubs'):
             keyboard_markup.add(
                 InlineKeyboardButton(text=f'{club.get("Club_name")}',
-                                     callback_data=deposit_cb.new(club=club.get('Club_name')))
+                                     callback_data=club_cb.new(club=club.get('Club_name')))
             )
         reply = f'Choice the Club.'
-        await call.message.answer(reply, reply_markup=keyboard_markup)
+        await call.message.answer(text=reply, reply_markup=keyboard_markup)
     else:
-        reply = 'The service is temporarily unavailable, please try again later'
-        await call.message.answer_sticker(
-            sticker='CAACAgIAAxkBAAIElF-ATNnW9y3WVWgDjLxOC5yvhY5QAAIUAQACufOXC5ZJByYQOH2bGwQ')
-        await call.message.answer(reply, reply_markup=keyboard_markup)
+        await service_unavailable(call.from_user.id)
 
 
-@dp.callback_query_handler(deposit_cb.filter())
+@dp.callback_query_handler(club_cb.filter())
 async def choice_method(call: CallbackQuery, callback_data: Dict[str, str]):
     """
     Выводит по выбранному клубу список доступных методов пополнения из джейсон файла.
@@ -81,19 +98,15 @@ async def choice_method(call: CallbackQuery, callback_data: Dict[str, str]):
     :param callback_data:
     :return:
     """
-    await call.answer()
-    # await call.message.edit_reply_markup()
-    keyboard_markup = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text='Back',
-                                  callback_data='start')],
-            [InlineKeyboardButton(text='Contacts', callback_data='contacts')]
-        ]
-    )
-    # в следующем окне отправляем уведомление в чат.
+    await call.message.edit_reply_markup()
+
     data = read_json_data(JSON_DATA_FILENAME)
     current_club = callback_data.get('club')
+
     if data != 'File not read' and data.get('Clubs'):
+
+        keyboard_markup = InlineKeyboardMarkup()
+
         for club in data.get('Clubs'):
             if club.get('Club_name') == current_club:
                 for _, value in club['Deposit'].items():
@@ -104,7 +117,38 @@ async def choice_method(call: CallbackQuery, callback_data: Dict[str, str]):
                                                                            method=value.get('Name'))),
                     )
 
-    reply = f'Choice available method for {current_club}'
+        keyboard_markup.add(
+            InlineKeyboardButton(text='Withdraw',
+                                 callback_data=withdraw_cb.new(action='withdraw', club=current_club, method='_')),
+            InlineKeyboardButton(text='Contacts', callback_data='contacts'),
+            InlineKeyboardButton(text='Back', callback_data='show_clubs'),
+        )
+
+        reply = f'Choice available method for {current_club}'
+        await call.message.answer(reply, reply_markup=keyboard_markup)
+    else:
+        await service_unavailable(call.from_user.id)
+
+
+@dp.callback_query_handler(withdraw_cb.filter(action='withdraw'))
+async def deposit(call: CallbackQuery, callback_data: Dict[str, str]):
+    """
+    Выводить кнопки пополнить и отправить скриншот пополнения.
+    ВАЖНО: Ограничение на суммарное название клуба, метода пополнения и названия действия 64 байта!
+    :param call:
+    :param callback_data:
+    :return:
+    """
+    # TODO make notification
+    await call.message.edit_reply_markup()
+    club_name = callback_data.get('club')
+    keyboard_markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text='Show me the Clubs', callback_data='')],
+            [InlineKeyboardButton(text='Contacts', callback_data='contacts')],
+        ]
+    )
+    reply = f'Твоя заявка на вывод для клуба {club_name} отправлена администратору!'
     await call.message.answer(reply, reply_markup=keyboard_markup)
 
 
@@ -117,26 +161,32 @@ async def deposit(call: CallbackQuery, callback_data: Dict[str, str]):
     :param callback_data:
     :return:
     """
-    await call.answer()
     await call.message.edit_reply_markup()
-    current_club = callback_data.get('club')
-    method = callback_data.get('method')
+    club_name = callback_data.get('club')
+    method_name = callback_data.get('method')
+    method = get_method_data(club_name, method_name, JSON_DATA_FILENAME)
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text='Назад', callback_data=deposit_cb.new(club=current_club))],
+            [InlineKeyboardButton(text='Back', callback_data=club_cb.new(club=club_name))],
             [InlineKeyboardButton(text='Пополнить',
                                   callback_data=withdraw_cb.new(action='transfer',
-                                                                club=current_club,
-                                                                method=method))],
+                                                                club=club_name,
+                                                                method=method_name))],
             [InlineKeyboardButton(text='Отправить скриншот пополнения',
                                   callback_data=withdraw_cb.new(action='prove',
-                                                                club=current_club,
-                                                                method=method))],
+                                                                club=club_name,
+                                                                method=method_name))],
         ]
 
     )
-
-    reply = f'Пополненить клуб {current_club} через {method} (КАКУЮ ЕЩЁ ИНФУ ВЫВЕСТИ????)'
+    reply = f'{method.get("Name")} for {club_name}:\n' \
+            f'Account bill: {method.get("Account_bill")}\n' \
+            f'Country bill: {method.get("Country_bill")}\n' \
+            f'Name_owner: {method.get("Andrey")}\n' \
+            f'Commet to pay: {method.get("Commet_topay")}\n' \
+            f'Fee: {method.get("Fee")} %\n' \
+            f'Additional info: {method.get("Additinal_comment")}'
+    # await call.message.answer_photo(photo=f'{method.get("Url_icon")}', caption=reply, reply_markup=keyboard_markup)
     await call.message.answer(reply, reply_markup=keyboard_markup)
 
 
@@ -151,19 +201,18 @@ async def deposit(call: CallbackQuery, callback_data: Dict[str, str]):
     :return:
     """
     # TODO make send notification
-    await call.answer()
     await call.message.edit_reply_markup()
     current_club = callback_data.get('club')
     method = callback_data.get('method')
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text='Назад', callback_data=withdraw_cb.new(action='view',
-                                                                              club=current_club,
-                                                                              method=method))],
+            [InlineKeyboardButton(text='Back', callback_data=withdraw_cb.new(action='view',
+                                                                             club=current_club,
+                                                                             method=method))],
         ]
     )
 
-    reply = f'Заявка получена и с тобой свяжутся в ближайшее время! (КАКУЮ ЕЩЁ ИНФУ ВЫВЕСТИ????)'
+    reply = f'Заявка получена  Клуб ID : 00000  ID игрока: 00000 Покер Хостинг: xxx'
     await call.message.answer(reply, reply_markup=keyboard_markup)
 
 
@@ -178,7 +227,7 @@ async def ask_photo_prove(call: CallbackQuery, state: FSMContext):
     :return:
     """
     # TODO make sand photo prove
-    await call.answer()
+    await call.message.edit_reply_markup()
 
     await AddProve.Image.set()
     data = await state.get_data()
@@ -188,7 +237,7 @@ async def ask_photo_prove(call: CallbackQuery, state: FSMContext):
         ]
     )
 
-    reply = f'Отправь мне скриншот подтверждение перевода.'
+    reply = f'Send me photo prove payment.'
     await call.message.answer(reply, reply_markup=keyboard_markup)
 
 
@@ -206,7 +255,7 @@ async def get_photo_prove(message: Message, state: FSMContext):
 
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text='К ... (куда его отсюда вести?)', callback_data='cancel')]  # TODO
+            [InlineKeyboardButton(text='К ... (куда его отсюда вести?)', callback_data='start')]  # TODO
         ]
     )
 
