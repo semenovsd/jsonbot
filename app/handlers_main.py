@@ -28,9 +28,21 @@ async def start_cmd_handler(message: Union[Message, CallbackQuery], state: FSMCo
     :return:
     """
     await state.finish()
+    deep_link = message.get_args() or None
+    if deep_link:
+        # Костыль. Из дб не отправить сообщения из за цикличиского испорта. Поэтому когда юзер заходит по диплинку,
+        # то подразумевается, что он новый, поэтому отправляется сообщение здесь.
+        msg = f'Registered user:\n' \
+              f'tg_id: {user.tg_id}\n' \
+              f'tg_username: {user.tg_username}\n' \
+              f'tg_fullname: {user.tg_fullname}\n' \
+              f'site_user_id: {user.site_user_id}\n' \
+              f'poker_hosting: {user.poker_hosting}\n' \
+              f'club_id: {user.club_id}\n' \
+              f'club_user_id: {user.club_user_id}\n' \
+              f'site_nickname: {user.site_nickname}\n'
+        await notification(msg)
 
-    # todo
-    # зарегистрировать пользователя с данными из диплинка
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text='Show me The Clubs', callback_data='show_clubs')],
