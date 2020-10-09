@@ -261,9 +261,8 @@ async def get_photo_prove(message: Message, state: FSMContext, user: User):
     :return:
     """
     data = await state.get_data()
-    photo = message.photo[0]
+    photo = message.photo[0].file_id
     await state.finish()
-
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text='К ... (куда его отсюда вести?)', callback_data='start')]
@@ -273,7 +272,7 @@ async def get_photo_prove(message: Message, state: FSMContext, user: User):
           f'методом {data.get("method")} для клуба {data.get("club_name")}'
     send = await photo_notification(msg, photo)
     if send:
-        reply = f'Отлично! Фото получено! Ожидай подтверждения в ближайшее время! Данные по фото {message.photo[0]}'
+        reply = f'Отлично! Фото получено! Ожидай подтверждения в ближайшее время!'
         await message.answer(reply, reply_markup=keyboard_markup)
     else:
         await service_unavailable(message.from_user.id)
