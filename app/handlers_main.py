@@ -118,10 +118,10 @@ async def choice_method(call: CallbackQuery, callback_data: Dict[str, str]):
                     )
 
         keyboard_markup.add(
-            InlineKeyboardButton(text='Withdraw',
-                                 callback_data=withdraw_cb.new(action='withdraw', club=current_club, method='_')),
             InlineKeyboardButton(text='Contacts', callback_data='contacts'),
             InlineKeyboardButton(text='Back', callback_data='show_clubs'),
+            InlineKeyboardButton(text='Withdraw',
+                                 callback_data=withdraw_cb.new(action='withdraw', club=current_club, method='_')),
         )
 
         reply = f'Choice available method for {current_club}'
