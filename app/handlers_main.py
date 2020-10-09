@@ -28,7 +28,10 @@ async def start_cmd_handler(message: Union[Message, CallbackQuery], state: FSMCo
     :return:
     """
     await state.finish()
-    deep_link = message.get_args() or None
+    try:
+        deep_link = message.get_args() or None
+    except Exception:
+        deep_link = None
     if deep_link:
         # Костыль. Из дб не отправить сообщения из за цикличиского испорта. Поэтому когда юзер заходит по диплинку,
         # то подразумевается, что он новый, поэтому отправляется сообщение здесь.
@@ -234,7 +237,8 @@ async def deposit(call: CallbackQuery, callback_data: Dict[str, str], user: User
     msg = f'Пользователь ID {user.tg_id} (@{user.tg_username}) хочет пополнить методом {method} для клуба {club_name}'
     send = await notification(msg)
     if send:
-        reply = f'Заявка получена  Клуб ID : 00000  ID игрока: 00000 Покер Хостинг: xxx'
+        reply = f'Your request:\n' \
+                f'Club ID: {user.club_id}  ID user: {user.site_user_id} Poker Hosting: {user.poker_hosting}'
         await call.message.answer(reply, reply_markup=keyboard_markup)
     else:
         await service_unavailable(call.from_user.id)

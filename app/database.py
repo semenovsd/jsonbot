@@ -34,7 +34,7 @@ class User(db.Model):
             deep_link = message.get_args() or None
             # deep_link = base64.b64decode(deep_link.decode("UTF-8").encode("UTF-8")).decode("UTF-8")
             logging.info(f'DEEEEEEEEEEEEEEPPPPPP LLLLLLLIIIIIIINK {deep_link}')
-            site_user_id, poker_hosting, club_id, club_user_id, site_nickname = deep_link.split('__')
+            site_user_id, poker_hosting, club_id, club_user_id, site_nickname = deep_link.split('_')
             new_user = User()
             new_user.tg_id = int(message.from_user.id)
             new_user.tg_username = str(message.from_user.username)
