@@ -1,9 +1,8 @@
-import json
 import logging
 
 from gino import Gino
 from gino.schema import GinoSchemaVisitor
-from sqlalchemy import (BigInteger, Boolean, Column, String, sql, ARRAY, ForeignKey, Sequence, Integer, JSON)
+from sqlalchemy import (BigInteger, Boolean, Column, String, sql)
 
 from config import PG_HOST, POSTGRES_DB, POSTGRES_PASSWORD, POSTGRES_USER
 
@@ -17,39 +16,37 @@ class User(db.Model):
     query: sql.Select
 
     tg_id = Column(BigInteger, unique=True, primary_key=True)
-    tg_username = Column(String(32))
-    tg_first_name = Column(String(32))
-    tg_last_name = Column(String(32))
-    poker_hosting = Column(String(3), default=None)
-    id_club = Column(String(16), default=None)
-    user_status = Column(Boolean(), default=False)
+    tg_username = Column(String(64), default=None)
+    tg_fullname = Column(String(64), default=None)
+    site_user_id = Column(String(64), default=None)
+    poker_hosting = Column(String(64), default=None)
+    club_id = Column(String(64), default=None)
+    club_user_id = Column(String(64), default=None)
+    site_nickname = Column(String(64), default=None)
+    is_registered = Column(Boolean(), default=False)
 
     @staticmethod
-    async def get_or_create(tg_id):
-        user = await User.query.where(User.tg_id == int(tg_id)).gino.first()
+    async def get_or_create(message):
+        user = await User.query.where(User.tg_id == int(message.from_user.id)).gino.first()
         if user:
             return user
-        else:
-            # args = message.get_args() if hasattr(message, 'get_args') else None
-            # logging.info(args)
-            # ?q=123456&w=ppp&e=1234567&r=nickname
-            # ?q=123456&w=ppp&e=1234567&r=12345&t=nickname
-            # q - id_пользователя
-            # w - poker_hosting
-            # e - id club
-            # r - id пользователя в клубе
+        try:
+            deep_link = message.get_args()
+            site_user_id, poker_hosting, club_id, club_user_id, site_nickname = deep_link.split('|')
             new_user = User()
-            new_user.tg_id = int(tg_id)
+            new_user.user_id = int(message.from_user.id)
+            new_user.username = str(message.from_user.username)
+            new_user.full_name = str(message.from_user.full_name)
+            new_user.site_user_id = str(site_user_id)
+            new_user.poker_hosting = str(poker_hosting)
+            new_user.club_id = str(club_id)
+            new_user.club_user_id = str(club_user_id)
+            new_user.site_nickname = str(site_nickname)
             await new_user.create()
             return new_user
-
-    @staticmethod
-    async def new_users():
-        return await User.query.where(User.training_ready == False).gino.all()
-
-    @staticmethod
-    async def all_users():
-        return [i[0] for i in await User.select('user_id').gino.all()]
+        except Exception as e:
+            logging.info(e, f'message \n\n\n\n ERROR !!!!!!!!!!!!!!!!!!')
+            return None
 
 
 async def create_db():

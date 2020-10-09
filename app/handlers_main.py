@@ -1,3 +1,4 @@
+from base64 import encode
 from typing import Dict, Union
 
 from aiogram.dispatcher import FSMContext
@@ -18,14 +19,16 @@ withdraw_cb = CallbackData('withdraw', 'action', 'club', 'method')
 
 @dp.callback_query_handler(text='start')
 @dp.message_handler(CommandStart())
-async def start_cmd_handler(message: Union[Message, CallbackQuery], state: FSMContext):
+async def start_cmd_handler(message: Union[Message, CallbackQuery], state: FSMContext, user: User):
     """
     Стартовый экран приветствия.
     :param message:
     :param state:
+    :param user:
     :return:
     """
     await state.finish()
+
     # todo
     # зарегистрировать пользователя с данными из диплинка
     keyboard_markup = InlineKeyboardMarkup(
@@ -152,7 +155,7 @@ async def deposit(call: CallbackQuery, callback_data: Dict[str, str], user: User
     msg = f'Пользоатель ID {user.tg_id} (@{user.tg_username}) запросил вывод для клуба {club_name}'
     send = await notification(msg)
     if send:
-        reply = f'Твоя заявка на вывод для клуба {club_name} отправлена администратору!'
+        reply = f'Your request has been sent to the administrator!'
         await call.message.answer(reply, reply_markup=keyboard_markup)
     else:
         await service_unavailable(call.from_user.id)
@@ -174,16 +177,15 @@ async def deposit(call: CallbackQuery, callback_data: Dict[str, str]):
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text='Back', callback_data=club_cb.new(club=club_name))],
-            [InlineKeyboardButton(text='Пополнить',
+            [InlineKeyboardButton(text='Deposit',
                                   callback_data=withdraw_cb.new(action='transfer',
                                                                 club=club_name,
                                                                 method=method_name))],
-            [InlineKeyboardButton(text='Отправить скриншот пополнения',
+            [InlineKeyboardButton(text='Send screenshot prove',
                                   callback_data=withdraw_cb.new(action='prove',
                                                                 club=club_name,
                                                                 method=method_name))],
         ]
-
     )
     reply = f'{method.get("Name")} for {club_name}:\n' \
             f'Account bill: {method.get("Account_bill")}\n' \
@@ -243,7 +245,7 @@ async def ask_photo_prove(call: CallbackQuery, callback_data: Dict[str, str], st
     await state.update_data(club_name=club_name, method=method)
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text='Отмена', callback_data='cancel')]
+            [InlineKeyboardButton(text='Cancel', callback_data='cancel')]
         ]
     )
 
@@ -261,18 +263,23 @@ async def get_photo_prove(message: Message, state: FSMContext, user: User):
     :return:
     """
     data = await state.get_data()
+    club_name = data.get('club_name')
+    method_name = data.get('method')
     photo = message.photo[0].file_id
     await state.finish()
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text='К ... (куда его отсюда вести?)', callback_data='start')]
+            [InlineKeyboardButton(text='Cancel',
+                                  callback_data=withdraw_cb.new(action='transfer',
+                                                                club=club_name,
+                                                                method=method_name))]
         ]
     )
     msg = f'Подтверждение от пользователя ID {user.tg_id} (@{user.tg_username}) о пополнение ' \
-          f'методом {data.get("method")} для клуба {data.get("club_name")}'
+          f'методом {method_name} для клуба {club_name}'
     send = await photo_notification(msg, photo)
     if send:
-        reply = f'Отлично! Фото получено! Ожидай подтверждения в ближайшее время!'
+        reply = f'Great! The prove has been send! Wait for the answer soon!'
         await message.answer(reply, reply_markup=keyboard_markup)
     else:
         await service_unavailable(message.from_user.id)
@@ -293,5 +300,5 @@ async def no_photo_prove(message: Message):
         ]
     )
 
-    reply = f'Я принимаю только ФОТО. Отправь фото или нажми отменя для возврата в предыдущее меню.'
+    reply = f'Sorry, i can get only photo. Send me photo file!'
     await message.answer(reply, reply_markup=keyboard_markup)
