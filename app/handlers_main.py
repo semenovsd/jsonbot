@@ -5,6 +5,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import CommandStart
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery, Message, ContentType
 from aiogram.utils.callback_data import CallbackData
+from aiogram.utils.exceptions import MessageNotModified
 
 from config import JSON_DATA_FILENAME
 from database import User
@@ -65,8 +66,10 @@ async def choice_method(call: CallbackQuery):
     :param call:
     :return:
     """
-    await call.message.edit_reply_markup()
-
+    try:
+        await call.message.edit_reply_markup()
+    except MessageNotModified:
+        pass
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text='Back',
@@ -87,7 +90,10 @@ async def choice_method(call: CallbackQuery):
     :param call:
     :return:
     """
-    await call.message.edit_reply_markup()
+    try:
+        await call.message.edit_reply_markup()
+    except MessageNotModified:
+        pass
 
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -116,7 +122,10 @@ async def choice_method(call: CallbackQuery, callback_data: Dict[str, str]):
     :param callback_data:
     :return:
     """
-    await call.message.edit_reply_markup()
+    try:
+        await call.message.edit_reply_markup()
+    except MessageNotModified:
+        pass
 
     data = read_json_data(JSON_DATA_FILENAME)
     current_club = callback_data.get('club')
@@ -158,7 +167,10 @@ async def deposit(call: CallbackQuery, callback_data: Dict[str, str], user: User
     :param user:
     :return:
     """
-    await call.message.edit_reply_markup()
+    try:
+        await call.message.edit_reply_markup()
+    except MessageNotModified:
+        pass
     club_name = callback_data.get('club')
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -185,7 +197,10 @@ async def deposit(call: CallbackQuery, callback_data: Dict[str, str]):
     :param callback_data:
     :return:
     """
-    await call.message.edit_reply_markup()
+    try:
+        await call.message.edit_reply_markup()
+    except MessageNotModified:
+        pass
     club_name = callback_data.get('club')
     method_name = callback_data.get('method')
     method = get_method_data(club_name, method_name, JSON_DATA_FILENAME)
@@ -224,7 +239,10 @@ async def deposit(call: CallbackQuery, callback_data: Dict[str, str], user: User
     :param user:
     :return:
     """
-    await call.message.edit_reply_markup()
+    try:
+        await call.message.edit_reply_markup()
+    except MessageNotModified:
+        pass
     club_name = callback_data.get('club')
     method = callback_data.get('method')
     keyboard_markup = InlineKeyboardMarkup(
@@ -253,7 +271,10 @@ async def ask_photo_prove(call: CallbackQuery, callback_data: Dict[str, str], st
     :param call:
     :return:
     """
-    await call.message.edit_reply_markup()
+    try:
+        await call.message.edit_reply_markup()
+    except MessageNotModified:
+        pass
 
     await AddProve.Image.set()
     club_name = callback_data.get('club')

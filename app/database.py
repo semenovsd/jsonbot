@@ -31,10 +31,13 @@ class User(db.Model):
         if user:
             return user
         try:
-            deep_link = message.get_args() or None
-            # deep_link = base64.b64decode(deep_link.decode("UTF-8").encode("UTF-8")).decode("UTF-8")
-            logging.info(f'DEEEEEEEEEEEEEEPPPPPP LLLLLLLIIIIIIINK {deep_link}')
-            site_user_id, poker_hosting, club_id, club_user_id, site_nickname = deep_link.split('_')
+            try:
+                deep_link = message.get_args()
+                # deep_link = base64.b64decode(deep_link.decode("UTF-8").encode("UTF-8")).decode("UTF-8")
+                site_user_id, poker_hosting, club_id, club_user_id, site_nickname = deep_link.split('_')
+            except Exception:
+                logging.info(f'INTRUDER !!!!!!!!!!!!!!!!!! NO DEEP LINK {message} \n\n\n\n ERROR ')
+                site_user_id, poker_hosting, club_id, club_user_id, site_nickname = None, None, None, None, None
             new_user = User()
             new_user.tg_id = int(message.from_user.id)
             new_user.tg_username = str(message.from_user.username)
@@ -47,7 +50,6 @@ class User(db.Model):
             await new_user.create()
             return new_user
         except Exception as e:
-            logging.info(e, f'INTRUDER NO DEEP LINK {message} \n\n\n\n ERROR !!!!!!!!!!!!!!!!!!')
             return None
 
 
